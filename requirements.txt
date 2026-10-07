@@ -1,0 +1,10 @@
+# Lower bounds chosen so pip installs prebuilt wheels on Python 3.14
+# (older pins forced a from-source Rust build of pydantic-core).
+fastapi>=0.118
+uvicorn[standard]>=0.34
+httpx>=0.28
+pydantic>=2.12
+pydantic-settings>=2.7
+SQLAlchemy>=2.0.36
+psycopg[binary]>=3.2        # PostgreSQL driver (omit if you stay on SQLite)
+python-dotenv>=1.0
