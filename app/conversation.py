@@ -26,7 +26,11 @@ from .models import (
 #   single-item  →  "Ref: #kanchi-red-01"
 #   cart line    →  "... #kanchi-red-01 x2"
 _TOKEN_RE = re.compile(r"#([a-z0-9][a-z0-9-]{1,80})(?:\s*[x×]\s*(\d+))?", re.IGNORECASE)
-_LOGIN_RE = re.compile(r"\blogin[-\s]?([a-z0-9]{4,10})\b", re.IGNORECASE)
+# Matches "Verify:<brand>:A1B2C3D4" and tolerant variants (extra spaces, a
+# forwarded message with text wrapped around it) — the brand text is cosmetic,
+# the 8-hex-char code is what's load-bearing, so we don't hard-require an
+# exact brand match here.
+_LOGIN_RE = re.compile(r"verify\S{0,40}?\b([a-f0-9]{8})\b", re.IGNORECASE | re.DOTALL)
 _PAY_WORDS = {"pay", "checkout", "confirm", "order", "buy"}
 
 
@@ -65,16 +69,22 @@ async def handle(db: Session, phone: str, text: str) -> None:
     convo = _get_convo(db, phone)
     text = text.strip()
 
-    # Website login: "LOGIN <code>" sent from the verified WhatsApp number.
+    # Website login: "Verify:<brand>:<code>" sent from the number being verified.
     login = _LOGIN_RE.search(text)
     if login:
-        ok = auth.try_verify_login(db, login.group(1), phone)
-        await interakt.send_text(
-            phone,
-            "✅ You're logged in on the website — you can switch back to your browser."
-            if ok else
-            "That login link has expired. Please tap *Login with WhatsApp* on the site again.",
-        )
+        result = auth.try_verify_login(db, login.group(1), phone)
+        replies = {
+            "ok": "✅ Number verified! Switch back to your browser to finish.",
+            "mismatch": (
+                "⚠️ This WhatsApp number doesn't match the one you entered on the "
+                "website. Please reopen the login popup and enter this number, or "
+                "resend the code from the number you typed in."
+            ),
+            "expired": "That login code expired. Please tap *Login with WhatsApp* on the site again.",
+            "already_used": "That login link was already used. Please start a new login on the site.",
+            "unknown": "That doesn't look like a valid login code. Please start login again on the site.",
+        }
+        await interakt.send_text(phone, replies[result])
         db.commit()
         return
 

@@ -14,9 +14,30 @@ class Settings(BaseSettings):
 
     whatsapp_business_number: str = ""
 
+    # Brand text embedded in the WhatsApp verification message, e.g. "Verify:LamiJewellery:A1B2C3".
+    brand_name: str = "LamiJewellery"
+
     interakt_api_key: str = ""
     interakt_base_url: str = "https://api.interakt.ai/v1/public"
     interakt_webhook_secret: str = ""
+
+    # How long a login code stays claimable after creation.
+    login_code_ttl_seconds: int = 120
+    # Per-IP cap on how many codes can be minted per rolling hour (abuse/brute-force guard).
+    login_start_rate_limit_per_hour: int = 12
+
+    # Session cookie set after a verified code is claimed.
+    session_cookie_name: str = "lsh_session"
+    session_ttl_days: int = 30
+    # False only for local http:// dev; must be True in production (https).
+    cookie_secure: bool = True
+
+    # DEV ONLY: verify login codes without Interakt/WhatsApp. When True, the
+    # login QR/link points at /auth/wa/dev/confirm, which marks the code verified
+    # through the SAME path the real Interakt webhook uses — so the whole
+    # signup/signin + session flow is exercised end to end with a dummy number.
+    # MUST stay False in production; the dev endpoint 404s whenever it is off.
+    dev_auth_bypass: bool = False
 
     sanity_project_id: str = ""
     sanity_dataset: str = "production"
@@ -27,6 +48,11 @@ class Settings(BaseSettings):
     phonepe_merchant_id: str = "PGTESTPAYUAT"
     phonepe_salt_key: str = ""
     phonepe_salt_index: str = "1"
+
+    # Courier aggregator (Shiprocket) tracking webhook. The token you paste into
+    # the Shiprocket dashboard must equal this; it arrives as the `x-api-key`
+    # header. Leave blank in dev to let Shiprocket's "Test Webhook" through.
+    shipping_webhook_token: str = ""
 
 
 settings = Settings()

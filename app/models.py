@@ -46,18 +46,52 @@ class Customer(Base):
     phone: Mapped[str] = mapped_column(String, primary_key=True)  # digits incl. country code
     name: Mapped[str | None] = mapped_column(String, nullable=True)
     email: Mapped[str | None] = mapped_column(String, nullable=True)
+    # Default delivery address, captured at signup and reusable for future orders.
+    address: Mapped[str | None] = mapped_column(String, nullable=True)
+    city: Mapped[str | None] = mapped_column(String, nullable=True)
+    pincode: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class LoginCode(Base):
-    """A one-time code tying a browser session to a phone, verified over WhatsApp."""
+    """A one-time code tying a browser session to a phone, verified over WhatsApp.
+
+    `expected_phone` is the number the user typed into the website *before* the
+    QR/link was generated. The webhook only marks the code verified if the
+    WhatsApp sender matches it — this stops an unrelated/incorrect number from
+    silently claiming the session. `claimed` makes the code single-use even
+    after verification, so it can't be replayed as a standing credential.
+    """
     __tablename__ = "login_codes"
 
     code: Mapped[str] = mapped_column(String, primary_key=True)
+    expected_phone: Mapped[str] = mapped_column(String)
     phone: Mapped[str | None] = mapped_column(String, nullable=True)  # set once verified
     verified: Mapped[bool] = mapped_column(default=False)
+    mismatch: Mapped[bool] = mapped_column(default=False)
+    claimed: Mapped[bool] = mapped_column(default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class Session(Base):
+    """An opaque, server-issued login session — the real auth boundary for the
+    browser after a login code is claimed. The code itself is never reused as
+    a credential past that one claim."""
+    __tablename__ = "sessions"
+
+    token: Mapped[str] = mapped_column(String, primary_key=True)
+    phone: Mapped[str] = mapped_column(String, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class WebhookEvent(Base):
+    """Dedupe table for inbound Interakt webhook deliveries (at-least-once retries)."""
+    __tablename__ = "webhook_events"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    received_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 
 class Order(Base):

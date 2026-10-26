@@ -22,7 +22,7 @@ Storefront (Next.js) ──wa.me deep link (Ref: #slug)──▶ WhatsApp
 ## Run locally
 
 ```bash
-cd backend
+cd J-backend
 python -m venv .venv && source .venv/Scripts/activate   # Windows Git Bash
 pip install -r requirements.txt
 cp .env.example .env            # then fill in the values
